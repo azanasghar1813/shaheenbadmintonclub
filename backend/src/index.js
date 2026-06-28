@@ -18,6 +18,7 @@ const app = express();
 const allowedOrigins = [
   process.env.CLIENT_URL || 'http://localhost:5173',
   'https://shaheen-badminton.vercel.app',
+  'https://velvety-nasturtium-bcade1.netlify.app',
 ];
 
 app.use(
