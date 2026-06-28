@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, Shuffle, BrainCircuit, RefreshCw, Copy } from 'lucide-react';
+import { Users, Shuffle, BrainCircuit, RefreshCw, Copy, Megaphone, Calendar, Save, Plus } from 'lucide-react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 
@@ -11,6 +11,12 @@ export default function AdminTeamMaker() {
   
   const [teamSize, setTeamSize] = useState(2);
   const [mode, setMode] = useState('intelligent'); // 'intelligent' or 'random'
+  
+  const [schedule, setSchedule] = useState([]);
+  const [announceSchedule, setAnnounceSchedule] = useState(true);
+  const [manualTeam1, setManualTeam1] = useState(0);
+  const [manualTeam2, setManualTeam2] = useState(1);
+  const [savingSchedule, setSavingSchedule] = useState(false);
 
   useEffect(() => {
     api.get('/players?status=approved').then(({ data }) => {
@@ -63,6 +69,7 @@ export default function AdminTeamMaker() {
     }
 
     setTeams(generatedTeams);
+    setSchedule([]); // reset schedule when regenerating
     toast.success('Teams generated!');
   };
 
@@ -78,6 +85,67 @@ export default function AdminTeamMaker() {
     });
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard!');
+  };
+
+  const announceTeams = async () => {
+    if (teams.length === 0) return;
+    let text = "🏸 Today's Badminton Teams 🏸\n\n";
+    teams.forEach((team, index) => {
+      text += `Team ${index + 1}:\n`;
+      team.forEach(p => {
+        text += `- ${p.name} (${p.skillLevel}, ${p.winRate}%)\n`;
+      });
+      text += '\n';
+    });
+
+    try {
+      await api.post('/announcements', {
+        title: "🏸 Today's Badminton Teams",
+        body: text,
+        category: 'schedule',
+        pinned: false,
+      });
+      toast.success('Teams announced successfully!');
+    } catch (err) {
+      toast.error('Failed to announce teams.');
+    }
+  };
+
+  const autoPair = () => {
+    const newSchedule = [];
+    for (let i = 0; i < teams.length; i += 2) {
+      if (i + 1 < teams.length) {
+        newSchedule.push({ team1Index: i, team2Index: i + 1 });
+      }
+    }
+    setSchedule(newSchedule);
+  };
+
+  const addManualPair = () => {
+    if (manualTeam1 === manualTeam2) {
+      toast.error('Cannot pair a team against itself');
+      return;
+    }
+    setSchedule([...schedule, { team1Index: Number(manualTeam1), team2Index: Number(manualTeam2) }]);
+  };
+
+  const saveSchedule = async () => {
+    if (schedule.length === 0) return toast.error('No matches scheduled');
+    setSavingSchedule(true);
+    try {
+      const payload = {
+        teams: teams.map((t, i) => ({ name: `Team ${i + 1}`, playerIds: t.map(p => p._id) })),
+        matches: schedule,
+        announce: announceSchedule
+      };
+      await api.post('/matches/daily-schedule', payload);
+      toast.success('Schedule saved successfully!');
+      setSchedule([]);
+    } catch (err) {
+      toast.error('Failed to save schedule');
+    } finally {
+      setSavingSchedule(false);
+    }
   };
 
   return (
@@ -175,9 +243,14 @@ export default function AdminTeamMaker() {
               <Users size={20} /> Generated Teams
             </h2>
             {teams.length > 0 && (
-              <button className="btn btn-ghost btn-sm" onClick={copyToClipboard}>
-                <Copy size={14} /> Copy Text
-              </button>
+              <div className="flex-gap">
+                <button className="btn btn-primary btn-sm" onClick={announceTeams}>
+                  <Megaphone size={14} /> Announce Teams
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={copyToClipboard}>
+                  <Copy size={14} /> Copy Text
+                </button>
+              </div>
             )}
           </div>
 
@@ -209,6 +282,57 @@ export default function AdminTeamMaker() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Match Schedule Section */}
+          {teams.length > 0 && (
+            <div style={{ marginTop: '2rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
+              <div className="flex-between" style={{ marginBottom: '1rem' }}>
+                <h2 style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Calendar size={20} /> Match Schedule
+                </h2>
+                <button className="btn btn-ghost btn-sm" onClick={autoPair}>
+                  <Shuffle size={14} /> Auto-Pair
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <select className="form-input" value={manualTeam1} onChange={e => setManualTeam1(e.target.value)}>
+                  {teams.map((_, i) => <option key={i} value={i}>Team {i + 1}</option>)}
+                </select>
+                <span style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}>vs</span>
+                <select className="form-input" value={manualTeam2} onChange={e => setManualTeam2(e.target.value)}>
+                  {teams.map((_, i) => <option key={i} value={i}>Team {i + 1}</option>)}
+                </select>
+                <button className="btn btn-primary" onClick={addManualPair}>
+                  <Plus size={16} />
+                </button>
+              </div>
+
+              {schedule.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                  {schedule.map((s, i) => (
+                     <div key={i} className="flex-between" style={{ background: 'var(--color-surface)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
+                      <span>Team {s.team1Index + 1} <span style={{ color: 'var(--text-muted)' }}>vs</span> Team {s.team2Index + 1}</span>
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setSchedule(schedule.filter((_, index) => index !== i))} style={{ color: 'var(--color-red)' }}>✕</button>
+                    </div>
+                  ))}
+                  
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={announceSchedule} onChange={e => setAnnounceSchedule(e.target.checked)} style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }} />
+                    Announce schedule on main page
+                  </label>
+
+                  <button className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} onClick={saveSchedule} disabled={savingSchedule}>
+                    {savingSchedule ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <><Save size={16} /> Save & Schedule Matches</>}
+                  </button>
+                </div>
+              ) : (
+                <div className="empty-state" style={{ padding: '1rem', fontSize: '0.9rem' }}>
+                  <p>No matches scheduled yet.</p>
+                </div>
+              )}
             </div>
           )}
         </div>

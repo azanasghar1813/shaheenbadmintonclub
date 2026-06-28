@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Plus, Edit2, Trash2, User, X, Upload, CheckCircle, Ban, ArrowLeftRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, User, X, Upload, CheckCircle, Ban, ArrowLeftRight, BarChart2 } from 'lucide-react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -13,6 +13,9 @@ export default function AdminPlayers() {
   const [modal, setModal] = useState(false);
   const [editPlayer, setEditPlayer] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [statsModal, setStatsModal] = useState(false);
+  const [statsPlayer, setStatsPlayer] = useState(null);
+  const [statsForm, setStatsForm] = useState({ wins: 0, losses: 0, gamesPlayed: 0, tournamentsPlayed: 0, tournamentsWon: 0 });
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState('');
   const [saving, setSaving] = useState(false);
@@ -30,6 +33,19 @@ export default function AdminPlayers() {
   const openAdd = () => { setEditPlayer(null); setForm(EMPTY_FORM); setPhoto(null); setPhotoPreview(''); setModal(true); };
   const openEdit = (p) => { setEditPlayer(p); setForm({ name: p.name, skillLevel: p.skillLevel, position: p.position || '', phone: p.phone || '' }); setPhotoPreview(p.photo?.url || ''); setPhoto(null); setModal(true); };
   const closeModal = () => { setModal(false); setEditPlayer(null); };
+
+  const openStats = (p) => {
+    setStatsPlayer(p);
+    setStatsForm({
+      wins: p.stats.wins,
+      losses: p.stats.losses,
+      gamesPlayed: p.stats.gamesPlayed,
+      tournamentsPlayed: p.stats.tournamentsPlayed,
+      tournamentsWon: p.stats.tournamentsWon,
+    });
+    setStatsModal(true);
+  };
+  const closeStats = () => { setStatsModal(false); setStatsPlayer(null); };
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -80,6 +96,21 @@ export default function AdminPlayers() {
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update status');
+    }
+  };
+
+  const handleStatsSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.patch(`/players/${statsPlayer._id}/stats`, statsForm);
+      toast.success('Stats updated');
+      closeStats();
+      load();
+    } catch (err) {
+      toast.error('Failed to update stats');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -152,6 +183,7 @@ export default function AdminPlayers() {
                       
                       {tab === 'approved' && (
                         <>
+                          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openStats(p)} title="Edit Stats"><BarChart2 size={15} /></button>
                           <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEdit(p)} title="Edit"><Edit2 size={15} /></button>
                           {admin?.isGeneral && (
                             <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleStatusChange(p._id, 'restricted')} title="Restrict" style={{ color: 'var(--color-red)' }}><Ban size={15} /></button>
@@ -229,6 +261,51 @@ export default function AdminPlayers() {
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : null}
                   {saving ? 'Saving...' : editPlayer ? 'Update Player' : 'Add Player'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Modal */}
+      {statsModal && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && closeStats()}>
+          <div className="modal">
+            <div className="modal-header">
+              <h2>Edit Stats - {statsPlayer?.name}</h2>
+              <button className="btn btn-ghost btn-icon" onClick={closeStats}><X size={18} /></button>
+            </div>
+
+            <form onSubmit={handleStatsSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label">Wins</label>
+                  <input type="number" className="form-input" value={statsForm.wins} onChange={(e) => setStatsForm({ ...statsForm, wins: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Losses</label>
+                  <input type="number" className="form-input" value={statsForm.losses} onChange={(e) => setStatsForm({ ...statsForm, losses: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Games Played</label>
+                  <input type="number" className="form-input" value={statsForm.gamesPlayed} onChange={(e) => setStatsForm({ ...statsForm, gamesPlayed: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Tournaments Played</label>
+                  <input type="number" className="form-input" value={statsForm.tournamentsPlayed} onChange={(e) => setStatsForm({ ...statsForm, tournamentsPlayed: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Tournaments Won</label>
+                  <input type="number" className="form-input" value={statsForm.tournamentsWon} onChange={(e) => setStatsForm({ ...statsForm, tournamentsWon: e.target.value })} required />
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ margin: 0, padding: 0 }}>
+                <button type="button" className="btn btn-ghost" onClick={closeStats}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : null}
+                  {saving ? 'Saving...' : 'Update Stats'}
                 </button>
               </div>
             </form>

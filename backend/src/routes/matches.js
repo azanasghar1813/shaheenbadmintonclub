@@ -2,6 +2,7 @@ const express = require('express');
 const Match = require('../models/Match');
 const Tournament = require('../models/Tournament');
 const Team = require('../models/Team');
+const Announcement = require('../models/Announcement');
 const { protect } = require('../middleware/auth');
 const { enterScore } = require('../utils/bracketEngine');
 
@@ -41,6 +42,61 @@ router.get('/', async (req, res) => {
 });
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
+
+// POST /api/matches/daily-schedule (protected)
+router.post('/daily-schedule', protect, async (req, res) => {
+  const { teams, matches, announce } = req.body;
+  if (!teams || !matches) return res.status(400).json({ message: 'Missing teams or matches array' });
+
+  const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const tournament = await Tournament.create({
+    name: `Daily Matches - ${dateStr}`,
+    date: new Date(),
+    format: 'round-robin',
+    status: 'active'
+  });
+
+  const createdTeams = [];
+  for (let i = 0; i < teams.length; i++) {
+    const t = await Team.create({
+      tournamentId: tournament._id,
+      name: teams[i].name,
+      players: teams[i].playerIds
+    });
+    createdTeams.push(t);
+  }
+
+  let scheduleText = `🏸 Match Schedule for ${dateStr} 🏸\n\n`;
+  const createdMatches = [];
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    const team1 = createdTeams[m.team1Index];
+    const team2 = createdTeams[m.team2Index];
+    
+    const match = await Match.create({
+      tournamentId: tournament._id,
+      team1: team1._id,
+      team2: team2._id,
+      status: 'scheduled',
+      scheduledTime: new Date(),
+      round: 1,
+      matchNumber: i + 1
+    });
+    createdMatches.push(match);
+    scheduleText += `- Match ${i + 1}: ${team1.name} vs ${team2.name}\n`;
+  }
+
+  if (announce) {
+    await Announcement.create({
+      title: `🏸 Match Schedule - ${dateStr}`,
+      body: scheduleText,
+      category: 'schedule',
+      pinned: false
+    });
+  }
+
+  res.status(201).json({ message: 'Schedule generated successfully', tournament, matches: createdMatches });
+});
 
 // PUT /api/matches/:id/score  (protected)
 router.put('/:id/score', protect, async (req, res) => {
