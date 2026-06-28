@@ -1,0 +1,5 @@
+.tournaments-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.tournament-row { display: flex; align-items: center; gap: 1.25rem; text-decoration: none; color: inherit; }
+.tournament-icon { width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--color-primary-dim); display: flex; align-items: center; justify-content: center; color: var(--color-primary); flex-shrink: 0; }
+.tournament-info { flex: 1; }
+.tournament-info h3 { font-size: 1.05rem; margin-bottom: 0.1rem; }

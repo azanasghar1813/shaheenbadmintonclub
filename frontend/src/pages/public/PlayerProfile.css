@@ -1,0 +1,15 @@
+.back-link { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 2rem; transition: color var(--transition); }
+.back-link:hover { color: var(--color-primary); }
+
+.profile-layout { display: grid; grid-template-columns: 300px 1fr; gap: 2rem; }
+@media (max-width: 768px) { .profile-layout { grid-template-columns: 1fr; } }
+
+.profile-photo-wrap { text-align: center; }
+.profile-photo { width: 130px; height: 130px; border-radius: 50%; object-fit: cover; border: 3px solid var(--color-primary); margin-bottom: 1rem; display: block; margin-left: auto; margin-right: auto; }
+.profile-avatar { width: 130px; height: 130px; border-radius: 50%; background: var(--color-surface-2); display: flex; align-items: center; justify-content: center; color: var(--text-muted); margin: 0 auto 1rem; border: 3px solid var(--color-border); }
+.profile-name { font-size: 1.5rem; margin-bottom: 0.5rem; }
+
+.win-rate-bar { height: 8px; background: var(--color-surface-2); border-radius: 4px; overflow: hidden; }
+.win-rate-fill { height: 100%; background: linear-gradient(90deg, var(--color-primary), #60a5fa); border-radius: 4px; transition: width 1s ease; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
