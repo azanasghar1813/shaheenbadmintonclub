@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   const { limit = 50 } = req.query;
 
-  const players = await Player.find({ active: true })
+  const players = await Player.find({ status: 'approved' })
     .sort({ 'stats.wins': -1, 'stats.gamesPlayed': 1 })
     .limit(Number(limit));
 
